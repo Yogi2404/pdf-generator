@@ -12,6 +12,7 @@ app.post('/generate-pdf', async (req, res) => {
     const { url } = req.body;
 
     if (!url) {
+        console.error('No URL provided');
         return res.status(400).send('URL is required');
     }
 
