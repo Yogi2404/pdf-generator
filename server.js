@@ -2,9 +2,11 @@ const express = require('express');
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
+const { promisify } = require('util');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const readFile = promisify(fs.readFile);
 
 app.use(express.json());
 
@@ -12,7 +14,7 @@ app.post('/generate-pdf', async (req, res) => {
     const { url, fileName } = req.body;
 
     if (!url || !fileName) {
-        return res.status(400).send('URL and fileName are required');
+        return res.status(400).json({ error: 'URL and fileName are required' });
     }
 
     try {
@@ -25,17 +27,16 @@ app.post('/generate-pdf', async (req, res) => {
 
         await browser.close();
 
-        res.download(pdfPath, `${fileName}.pdf`, (err) => {
-            if (err) {
-                console.error('Error downloading the file:', err);
-            }
+        const pdfBuffer = await readFile(pdfPath);
+        const base64 = pdfBuffer.toString('base64');
 
-            // Delete the file after download
-            fs.unlinkSync(pdfPath);
-        });
+        // Delete the file after converting
+        fs.unlinkSync(pdfPath);
+
+        res.json({ pdfBase64: base64, fileName: `${fileName}.pdf` });
     } catch (error) {
         console.error('Error generating PDF:', error);
-        res.status(500).send('Error generating PDF');
+        res.status(500).json({ error: 'Error generating PDF' });
     }
 });
 
